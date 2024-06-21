@@ -1,23 +1,17 @@
 package com.todoc.web.controller;
 
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.log4j.xml.Log4jEntityResolver;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.ui.ModelMap;
@@ -27,13 +21,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.thymeleaf.TemplateEngine;
-import org.thymeleaf.context.Context;
-import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.pdf.BaseFont;
 import com.todoc.web.dto.Paging;
 import com.todoc.web.dto.PayLog;
 import com.todoc.web.dto.Presc;
@@ -55,9 +44,6 @@ public class UntactController {
 	private UntactService untactService;
 	private UserService userService;
 	private final JwtAuthorizationFilter jwtFilter;
-	
-	@Autowired
-    private TemplateEngine templateEngine;
 	
 	public UntactController(JwtAuthorizationFilter jwtFilter){
 		this.jwtFilter = jwtFilter;
@@ -174,7 +160,6 @@ public class UntactController {
 		model.addAttribute("untact", untact);
     	model.addAttribute("curPage", curPage);
 		model.addAttribute("paging", paging);
-		
         return "untact/selectClinic";
     }
   
@@ -224,7 +209,7 @@ public class UntactController {
     	String userEmail = jwtFilter.getUsernameFromToken(token);
     	
     	if(userEmail == null) {
-    	    String testString = userEmail.toString(); //일부러 널포인트 발생
+    	    String testString = userEmail.toString(); // 이렇게 하면 널 포인트 에러가 발생할 것입니다.
     	    return null;
     	}
     	
@@ -294,7 +279,7 @@ public class UntactController {
     //비대면-진료예약
     @PostMapping("/clinic-reserve-page")
     @ResponseBody
-    public Map clinicReserve(HttpServletRequest request, HttpServletResponse response) {
+    public String clinicReserve(HttpServletRequest request, HttpServletResponse response) {
     	String token = jwtFilter.extractJwtFromCookie(request);
     	String userEmail = jwtFilter.getUsernameFromToken(token);
     	
@@ -305,11 +290,11 @@ public class UntactController {
     	String symptoms= request.getParameter("symptoms");
     	
     	Reserve rsve = new Reserve();
-    	Map map = new HashMap();
+    	
+    	if(userEmail == null) 
+    		return "login/login";
 
-    	if(clinicInstinum!= null) {
-    		rsve.setClinicName(untactService.getClinicInfo(clinicInstinum));
-    	}
+    	
     	if(!StringUtil.isEmpty(userEmail) && !StringUtil.isEmpty(clinicInstinum)) {
 	    	if(!StringUtil.isEmpty(symptoms) &&!StringUtil.isEmpty(time)&&!StringUtil.isEmpty(date)) {
 	    		rsve.setUserEmail(userEmail);
@@ -323,20 +308,18 @@ public class UntactController {
 	    			rsve.setReservationDate(LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("yyyy/MM/dd")));
 	    		}
 	    	} else {
-	    		map.put("code", 200);
+	    		return Integer.toString(200);
 	    	}
     	}
     	
     	int res = 0;
     	if((res = untactService.insertReservation(rsve)) > 0 ) {
-    		map.put("code", 1);
-     	} else {
-    		map.put("code", 250);
+    		response.addIntHeader("code", 250);
+    	} else {
+    		response.addIntHeader("code", 404);
     	}
     	response.addIntHeader("res", res);
-    	map.put("res", res);
-    	map.put("rsve", rsve);
-    	return  map;
+    	return  Integer.toString(res);
     }
 
     //비대면-결제
@@ -345,16 +328,11 @@ public class UntactController {
     	String token = jwtFilter.extractJwtFromCookie(request);
     	String userEmail = jwtFilter.getUsernameFromToken(token);
     	//TODO: 마이페이지 연결되면 값 바꾸기
-    	String reservationSeqS = request.getParameter("reservationSeq"); 
-    	//String reservationSeqS = request.getParameter("72"); 
-    	int reservationSeq = Integer.parseInt(reservationSeqS);
-    	//int reservationSeq = Integer.parseInt("72");
+    	String untactSeq = request.getParameter("6"); 
     	
     	PayLog payLog = new PayLog();
-    	
     	//TODO: 마이페이지 연결되면 값 바꾸기
-    	//payLog.setReservationSeq(reservationSeq);
-    	payLog.setReservationSeq(reservationSeq);
+    	payLog.setPaySeq("6");
     	payLog.setUserEmail(userEmail);
     	
     	model.addAttribute("payLog", payLog);
@@ -368,29 +346,23 @@ public class UntactController {
     	String token = jwtFilter.extractJwtFromCookie(request);
     	String userEmail = jwtFilter.getUsernameFromToken(token);
 
-    	String rsveUserEmail      = request.getParameter("rsveUserEmail");
-    	String rsveClinicInstinum = request.getParameter("rsveClinicInstinum");
-    	String rsveSymptoms       = request.getParameter("rsveSymptoms");
-    	String reservationDate    = request.getParameter("reservationDate");
-    	String reservationTime    = request.getParameter("reservationTime");
-    	String rsveClinicName     = request.getParameter("rsveClinicName");
-    	
     	Reserve rsve = new Reserve();
     	
     	if(!StringUtil.isEmpty(userEmail)) {
     		rsve.setUserEmail(userEmail);
-    		rsve.setClinicInstinum(rsveClinicInstinum);
-    		rsve.setReservationSymptom(rsveSymptoms);
-    		rsve.setReservationDate(reservationDate);
-    		rsve.setReservationTime(reservationTime);
-    		rsve.setClinicName(rsveClinicName);
     	}
     	
-    	//rsve = untactService.reserveCheck(rsve);
+    	rsve = untactService.reserveCheck(rsve);
     	
     	model.addAttribute("rsve", rsve);
     	
     	return "untact/reservationUserView";
+    }
+    
+    //안쓸예정
+    @GetMapping("/clinic-reserve-doctor-page")
+    public String test13() {
+        return "untact/reservationDoctorView";
     }
     
     //약국리스트
@@ -399,20 +371,9 @@ public class UntactController {
     	return "untact/pharmacyList";
     }
     
-    //처방전 작성페이지
-    @GetMapping("/prescription")
-    public String prescription(Model model, HttpServletRequest request, HttpServletResponse response) {
-    	String token = jwtFilter.extractJwtFromCookie(request);
-    	String userEmail = jwtFilter.getUsernameFromToken(token);
-    	String reservationSeqS = request.getParameter("reservationSeq");
-    	int reservationSeq = Integer.parseInt(reservationSeqS);
-    	Untact untact = new Untact(); 
-    	
-    	untact.setReservationSeq(reservationSeq);
-    	untact.setUserEmail(userEmail);
-    	untact = untactService.precriptionWrite(untact);
-    	model.addAttribute("untact", untact);
-    	return "untact/prescription";
+    @GetMapping("/pdf-page")
+    public String test30() {
+        return "untact/pdf";
     }
     
     @PostMapping("/prescriptionInsert")
@@ -421,7 +382,6 @@ public class UntactController {
     	String clinicInstinum = request.getParameter("clinicInstinum");
     	String dose = request.getParameter("dose");
     	Presc presc = new Presc();
-    	Reserve rsve = new Reserve();
     	int res= 0;
     	
     	List<String> list = new ArrayList<String>();
@@ -440,27 +400,20 @@ public class UntactController {
     		presc.setOrder(String.valueOf(idx++));
     		res += untactService.prescriptionInsert(presc);
     	}
-    	if(res > 0) { 
-    		rsve.setReservationSeq(Integer.parseInt(reservationSeq));
-    		int updt = untactService.updatePrescriptionStatus(Integer.parseInt(reservationSeq));
-    			model.addAttribute("rsve",rsve);
-    			return "redirect:/reservationList-page";
-    	} else { 
-    		return "redirect:/reservationList-page";
+    	//insert 결과값
+    	if(res > 0) { //성공했을때,
+    		return "untact/prescriptionList";
+    	} else { //실패했을때,
+    		return "untact/prescriptionList";
     	}
     }
     
     @GetMapping("/prescriptionDetail")
-    public void prescriptionDetail(Model model, HttpServletRequest request, HttpServletResponse response) {
+    public String prescriptionDetail(Model model, HttpServletRequest request, HttpServletResponse response) {
     	String token = jwtFilter.extractJwtFromCookie(request);
     	String userEmail = jwtFilter.getUsernameFromToken(token);
-    	String reseSeq = request.getParameter("reservationSeq");
-        try {	
-    	
-    	String download = request.getParameter("download");
-    	if(download == null) download = "";
-    	
-    	
+    	//String reseSeq = request.getParameter("reservationSeq");
+    	//Long reservationSeq = Long.parseLong(reseSeq);
     	List<Presc> prescList = new ArrayList<Presc>(); 
     	Presc presc = new Presc();
     	Presc presc2 = new Presc();
@@ -469,9 +422,8 @@ public class UntactController {
     		presc.setUserEmail(userEmail);
     	
     	//todo: 마이페이지에서 seq받아오기
-    	if(reseSeq != null) 
-    		presc.setReservationSeq(Integer.parseInt(reseSeq));
-    		//presc.setReservationSeq(21);
+    	//if(reservationSeq != null) 
+    		presc.setReservationSeq(21);
     	
     	prescList = untactService.prescriptionDetail(presc);
     	presc2.setClinicDoctor(prescList.get(0).getClinicDoctor());
@@ -482,53 +434,31 @@ public class UntactController {
     	presc2.setPrescriptionSeq(prescList.get(0).getPrescriptionSeq());
     	presc2.setUserName(prescList.get(0).getUserName());
     	presc2.setUserIdentity(prescList.get(0).getUserIdentity());
+    	
+    	
+    	
+    	model.addAttribute("presc2", presc2);
+    	model.addAttribute("prescList", prescList);
+    	return "untact/prescriptionDetail";
+    }
+    
+    @GetMapping("/medicine-page")
+    public String test31(Model model, HttpServletRequest request, HttpServletResponse response) {
+    	String token = jwtFilter.extractJwtFromCookie(request);
+    	String userEmail = jwtFilter.getUsernameFromToken(token);
+    	
+    	
+    	Untact untact = new Untact(); 
+    	Reserve rsve = new Reserve();
+    	
+    	untact.setUserEmail(userEmail);
+    	//todo: 예약에서 시퀀스 받아오기
+    	untact.setReservationSeq(16);
+    	untact = untactService.precriptionWrite(untact);
+    	model.addAttribute("untact", untact);
+    	
+    	return "untact/prescription";
+    }
 
-		model.addAttribute("presc2", presc2);
-		model.addAttribute("prescList", prescList);
-
-		if ("Y".equals(download)) {
-			
-			 if (!response.isCommitted()) {
-			// Thymeleaf 템플릿 엔진을 사용하여 HTML 생성
-			Context context = new Context();
-            context.setVariables(model.asMap());
-            String htmlContent = templateEngine.process("untact/prescriptionDetail", context);
-            // String htmlContent = templateEngine.process("C:\\project\\final\\todoc\\src\\main\\resources\\templates\\untact\\prescriptionDetail.html", context);
-
-			ITextRenderer renderer = new ITextRenderer();
-			renderer.getFontResolver()
-			//폰트를 설정한다.
-		        .addFont(
-		                new ClassPathResource("/templates/NanumBarunGothic.ttf")
-		                        .getURL()
-		                        .toString(),
-		                BaseFont.IDENTITY_H,
-		                BaseFont.EMBEDDED);
-			renderer.setDocumentFromString(htmlContent);
-			renderer.layout();
-
-			// PDF 생성
-			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-			renderer.createPDF(outputStream);
-			renderer.finishPDF();
-			byte[] pdfBytes = outputStream.toByteArray();
-
-			// HTTP 응답 헤더 설정
-			response.setContentType("application/pdf");
-			response.setHeader("Content-Disposition", "attachment; filename=Prescription.pdf");
-
-			// PDF 파일 전송
-			OutputStream servletOutputStream = response.getOutputStream();
-			servletOutputStream.write(pdfBytes);
-			servletOutputStream.flush();
-			servletOutputStream.close();
-			 } 
-		}
-	} catch (Exception e) {
-		e.printStackTrace();
-	} finally {
-	}
-
-}
 
 }

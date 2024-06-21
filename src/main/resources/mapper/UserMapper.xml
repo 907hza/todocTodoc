@@ -331,10 +331,7 @@
 	<select id="findClinic" parameterType="com.todoc.web.dto.Clinic" resultMap="clinicMap">
 		SELECT USER_EMAIL, NVL(CLINIC_PHONE,'') CLINIC_PHONE
 		  FROM TD_CLINIC
-		 WHERE 1=1
-		 <if test="clinicDoctor != null and clinicDoctor != ''">
-		 AND CLINIC_DOCTOR = #{clinicDoctor}
-		 </if>
+		 WHERE CLINIC_DOCTOR = #{clinicDoctor}
 		 <if test="clinicPhone != null and clinicPhone != ''">
 		 AND CLINIC_PHONE = #{clinicPhone}
 		 </if>
@@ -347,10 +344,7 @@
 	<select id="findPharmacy" parameterType="com.todoc.web.dto.Pharmacy" resultMap="pharmacyMap">
 		SELECT USER_EMAIL, NVL(PHARMACY_PHONE,'') PHARMACY_PHONE
 		  FROM TD_PHARMACY
-		 WHERE 1=1
-		 <if test="pharmacyName != null and pharmacyName != ''" >
-		 AND PHARMACIST_NAME = #{pharmacistName}
-		 </if>
+		 WHERE PHARMACIST_NAME = #{pharmacistName}
 		 <if test="pharmacyPhone != null and pharmacyPhone != ''" >
 		 AND PHARMACY_PHONE = #{pharmacyPhone}
 		 </if>
@@ -363,10 +357,7 @@
 	<select id="findUser" parameterType="com.todoc.web.dto.User" resultMap="userMap">
 		SELECT USER_EMAIL, USER_STATUS, USER_PHONE
 		  FROM TD_USER
-		 WHERE 1=1
-		 	<if test="userName != null and userName != ''">
-		 	AND USER_NAME = #{userName}
-		 	</if>
+		 WHERE USER_NAME = #{userName}
 		   <if test="userPhone != null and userPhone != ''">
 		   AND USER_PHONE = #{userPhone}
 		   </if>
