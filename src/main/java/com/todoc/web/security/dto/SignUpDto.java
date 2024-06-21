@@ -33,8 +33,6 @@ public class SignUpDto
 	private String userEmail; // 이메일
 	
 	@NotEmpty(message="비밀번호는 필수 입력 값입니다.")
-	@Size(min=4, max=10)
-	@Pattern(regexp="^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d\\w\\W]{8,}$", message="비밀번호는 영문 대소문자, 숫자를 포함 8자리이상이어야 합니다.")
 	private String userPwd; // 비밀번호
 	
 	@NotEmpty(message="우편번호는 필수 입력 값입니다.")

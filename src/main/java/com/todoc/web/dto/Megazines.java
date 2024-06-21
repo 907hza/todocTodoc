@@ -24,7 +24,8 @@ public class Megazines {
 	private long startRow;				//시작 rownum
 	private long endRow;				//끝 rownum
 
-	
+	private MegazinesFile megazinesFile;
+
 	public Megazines() {
 		
 		newsFilter = "";

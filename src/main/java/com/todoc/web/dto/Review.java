@@ -25,9 +25,12 @@ public class Review {
 	
 	private String clinicInstinum;
 	
-	private int startRow;
-	private int endRow;
+	private long startRow;
+	
+	private long endRow;
 	
 	private long contactSeq;
+	
+	private String reviewDelFlag;
 }
 

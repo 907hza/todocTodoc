@@ -76,6 +76,7 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter
         chain.doFilter(request, response);
     }
 
+    // 주어진 JWT 토큰에서 권한 정보(roles)를 추출하여 SimpleGrantedAuthority 객체의 리스트로 반환하는 역할
     public List<SimpleGrantedAuthority> getAuthoritiesFromToken(String token) 
     {
         DecodedJWT jwt = JWT.require(Algorithm.HMAC512(JwtProperties.SECRET.getBytes()))
@@ -84,9 +85,13 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter
         
         String[] roles = jwt.getClaim("roles").asArray(String.class);
         
+        if (roles == null || roles.length == 0) 
+        {
+            return Collections.singletonList(new SimpleGrantedAuthority("ROLE_GUEST"));
+        }
+        
         return Arrays.stream(roles).map(SimpleGrantedAuthority::new).collect(Collectors.toList());
     }
-
     
     // 토큰 값 유효성 체크
     public boolean validateToken(String token) 

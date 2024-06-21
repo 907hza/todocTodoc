@@ -29,10 +29,13 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.thymeleaf.util.StringUtils;
 
 import com.todoc.web.dto.ClinicContact;
+import com.todoc.web.dto.Paging;
 import com.todoc.web.dto.ReservationContact;
+import com.todoc.web.dto.Reserve;
 import com.todoc.web.security.jwt.JwtAuthorizationFilter;
 import com.todoc.web.security.jwt.JwtProperties;
 import com.todoc.web.service.ClinicContactService;
+import com.todoc.web.util.StringUtil;
 
 
 @Controller
@@ -44,14 +47,13 @@ public class ClinicContactController {
 	
 	private final JwtAuthorizationFilter jwtFilter;
 	
-	public ClinicContactController(JwtAuthorizationFilter jwtFilter)
-	{
+	public ClinicContactController(JwtAuthorizationFilter jwtFilter){
 		this.jwtFilter = jwtFilter;
 	}
-
 	private static final Logger log = LoggerFactory.getLogger(ClinicContactController.class);
 	
-	
+	private static final int LIST_COUNT = 10;
+	private static final int PAGE_COUNT = 5;
 
 	//과목선택
 	@GetMapping("/clinic-contact-subject-page")
@@ -67,19 +69,6 @@ public class ClinicContactController {
 	
 	
 
-	 //리스트 페이지 다이렉트
-	 
-	 @GetMapping("/clinic-contact-list-page") 
-	 public String clinicListDirect(Model model) {
-		 List<ClinicContact> list = new ArrayList<>(); 
-		 ClinicContact search=new ClinicContact(); 
-		 list = clinicContactService.clinicList();
-	 
-	 model.addAttribute("clinicList", list); model.addAttribute("search",search);
-	 
-	 return "contact/clinicList"; 
-	 }
-	 
 	
 	//리스트 페이지 카테고리
 	@GetMapping("/clinic-contact-category-list")
@@ -92,14 +81,22 @@ public class ClinicContactController {
 			@RequestParam(value = "guValue",required=false) Integer guValue,    
 			@RequestParam(value = "isOpening", required = false) String isOpening,
 			@RequestParam(value = "locationValue", required = false) String locationValue,
+			@RequestParam(value = "curPage", required = false) Integer curPage,
 			Model model){
 		List<ClinicContact> list = new ArrayList<>();
 		ClinicContact search=new ClinicContact();
+		long totalCount = 0;
+		Paging paging = null;
+
+		
+		
 		search.setCategory(category);
 		search.setSearchValue(searchValue);
 		search.setClinicNight(clinicNight);
 		search.setClinicWeekend(clinicWeekend);
 		search.setTextSearch(textSearch);
+		
+
 		
 		//구 지역 검색 인덱스 로 변환(현재위치구/선택구)
 		if(locationValue != null) {
@@ -113,12 +110,7 @@ public class ClinicContactController {
 		}else {
 			search.setGuValue(guValue); 
 		}
-		
-			
 
-		
-		
-	
 		
 		List runningNumList = new ArrayList<>();
 		runningNumList = clinicContactService.clinicRunningList();
@@ -134,7 +126,27 @@ public class ClinicContactController {
 			search.setRunningNumList(runningNumList);
 		}
 		
+		totalCount = clinicContactService.listCount(search);
+		
+		
+		
+		if(totalCount > 0) {
+			if(curPage==null) {
+				curPage = 1;
+			}
+			paging = new Paging("/clinic-contact-category-list", totalCount, LIST_COUNT,PAGE_COUNT, curPage, "curgPage");
+			search.setStartRow(paging.getStartRow());
+			search.setEndRow(paging.getEndRow());
+			
+		}
+		
+
 		list = clinicContactService.clinicListCategory(search);
+		
+		  for (ClinicContact clinic : list) {
+	            System.out.println(clinic);
+	        }
+
 
 		model.addAttribute("search",search);
 		model.addAttribute("clinicList", list);
@@ -144,14 +156,27 @@ public class ClinicContactController {
 		model.addAttribute("guValue", guValue);
 		model.addAttribute("isOpening", isOpening);
 		model.addAttribute("runningNumList", runningNumList);
-		model.addAttribute("locationValue", locationValue);
+		model.addAttribute("curPage",curPage);
+		model.addAttribute("paging",paging);
+		
+		
 
 		return "contact/clinicList";
 	}
 
+		 
 
 	@GetMapping("/clinic-contact-detail-page")
-	public String clinicDetail(@RequestParam("clinicInstinum") String clinicInstinum, Model model) {
+	public String clinicDetail(HttpServletRequest request,@RequestParam("clinicInstinum") String clinicInstinum, Model model) {
+		
+    	String token = jwtFilter.extractJwtFromCookie(request);
+    	String userEmail = jwtFilter.getUsernameFromToken(token);
+    	String loginFlag = null;
+    	if(userEmail == null) {
+    		loginFlag = "N";
+    	}else {
+    		loginFlag = "Y";
+    	}
 		
 		ClinicContact clinicContact = new ClinicContact();
 		clinicContact = clinicContactService.clinicDetail(clinicInstinum);
@@ -197,6 +222,8 @@ public class ClinicContactController {
 		model.addAttribute("clinicDayList", clinicDayList);
 		model.addAttribute("clinicSubjectList", clinicSubjectList);
 		model.addAttribute("careerList", careerList);
+		model.addAttribute("loginFlag", loginFlag);
+
 
 
 		return "contact/clinicDetail";
@@ -206,7 +233,7 @@ public class ClinicContactController {
     @GetMapping("/contact-clinic-reserve-page")
     public String reservation(@RequestParam(value = "clinicInstinum", required = false) String clinicInstinum,
     HttpServletRequest request,Model model) {
-    	
+
     	String token = jwtFilter.extractJwtFromCookie(request);
     	String userEmail = jwtFilter.getUsernameFromToken(token);
     	
@@ -222,6 +249,7 @@ public class ClinicContactController {
     	
         //공휴일플래그
         String holidayFlag = clinicContactService.isHoliday(clinicInstinum);
+
         model.addAttribute("holidayFlag",holidayFlag);
     	
     	return "contact/clinicReservation";
@@ -234,6 +262,7 @@ public class ClinicContactController {
     	
     	String token = jwtFilter.extractJwtFromCookie(request);
     	String userEmail = jwtFilter.getUsernameFromToken(token);
+    	
 
     	if(!StringUtils.isEmpty(userEmail)) {
     		
@@ -297,8 +326,9 @@ public class ClinicContactController {
     	return ResponseEntity.ok(timeSlots);
     }
     
-   
 
+
+    
 
     
 

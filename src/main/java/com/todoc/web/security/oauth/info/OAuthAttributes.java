@@ -7,8 +7,10 @@ import com.todoc.web.security.oauth.SocialType;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 // 각 소셜마다 가져오는 데이터가 다르므로 그거를 분기해줄 클래스
+@Slf4j
 @Getter
 public class OAuthAttributes 
 {
@@ -17,7 +19,7 @@ public class OAuthAttributes
 	
 	@Builder
 	private OAuthAttributes(String userNameAttributeKey, OAuth2UserInfo oauth2User)
-	{
+	{		
 		this.userNameAttributeKey = userNameAttributeKey;
 		this.oauth2User = oauth2User;
 	}
@@ -48,6 +50,7 @@ public class OAuthAttributes
 	
 	private static OAuthAttributes ofNaver(String userNameAttributeName, Map<String, Object> attributes)
 	{
+		log.info(userNameAttributeName);
 		return OAuthAttributes.builder()
 				.userNameAttributeKey(userNameAttributeName)
 				.oauth2User(new NaverOAuth2UserInfo(attributes))
@@ -72,6 +75,11 @@ public class OAuthAttributes
 		if(oauth2UserInfo.getEmail() != null)
 		{
 			user.setUserEmail(oauth2UserInfo.getEmail());
+		}
+		
+		if(oauth2UserInfo.getId() != null)
+		{
+			user.setUserPwd(oauth2UserInfo.getId());
 		}
 		
 		if(oauth2UserInfo.getName() != null)

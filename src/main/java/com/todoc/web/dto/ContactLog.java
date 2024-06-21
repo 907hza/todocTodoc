@@ -21,5 +21,13 @@ public class ContactLog {
     private int payPrice;
     private String payDate;
     
+    //페이지
+    private long startRow;
+    private long endRow;
+    
     private long reviewSeq;
+    
+    //민지 추가
+    private long reservationSeq;
+    private String reservationStatus;
 }

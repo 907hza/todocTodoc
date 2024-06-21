@@ -32,22 +32,25 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws ServletException, IOException 
     {
         log.info("OAuth login success !");
-                
+     	
         try 
         {
         	 CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
-        	 
-             if (authentication.getAuthorities().toString().contains("GUEST")) 
-             { 
-                  User user = userDao.findByEmail(oAuth2User.getEmail());
+        	 User user = null;
+
+         	 log.info(oAuth2User.getEmail());
+         	 log.info(oAuth2User.getName());
+         	 
+         	 if(oAuth2User.getEmail().equals("id")) user = userDao.findByPwd(oAuth2User.getEmail());
+         	 else if(oAuth2User.getEmail().contains("com")) user = userDao.findByEmail(oAuth2User.getEmail());
+         	 else user = userDao.findByPwd(oAuth2User.getEmail());
+         	
+             if(user.getUserType().equals("GUEST")) 
+             {                   
                   try
-                  {
-                    	   
+                  {   
                 	  String accessToken = jwtTokenProvider.socialGenerateToken(authentication, false);
                 	  String refreshToken = jwtTokenProvider.socialGenerateToken(authentication, true);
-                        
-                	  log.info("accessToken : " + accessToken);
-                	  log.info("refreshToken : " + refreshToken);
 
                 	  Cookie cookie = new Cookie(JwtProperties.HEADER_STRING, JwtProperties.TOKEN_PREFIX + accessToken);
                 	  cookie.setHttpOnly(true);
@@ -55,11 +58,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler
                 	  cookie.setPath("/");
                 	  cookie.setSecure(true);
                 	  response.addCookie(cookie);
-                	  
+
                       user.setUserRefreshToken(refreshToken);
                       userDao.refreshTokenUpdate(user);
 
-                      response.sendRedirect("/main-page");
+                      response.sendRedirect("/login/oauthRegister");
                    }
                    catch(Exception e)
                    {
@@ -68,7 +71,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler
              }
              else
              {
-            	   loginSuccess(response, oAuth2User, authentication);
+            	   loginSuccess(response, oAuth2User, authentication, user);
              }
         } 
         catch (Exception e) 
@@ -77,10 +80,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler
         }
     }
     
-    private void loginSuccess(HttpServletResponse response, CustomOAuth2User oAuth2User, Authentication authentication) throws IOException
+    private void loginSuccess(HttpServletResponse response, CustomOAuth2User oAuth2User, Authentication authentication, User user) throws IOException
     {
-    	User user = userDao.findByEmail(authentication.getName());
-    	
     	String refreshToken = jwtTokenProvider.socialGenerateToken(authentication, true);
     	String accessToken = jwtTokenProvider.socialGenerateToken(authentication, false);
     	
@@ -96,5 +97,4 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler
     	
     	response.sendRedirect("/main-page");
     }
-
 }

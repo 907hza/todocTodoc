@@ -11,7 +11,7 @@ import com.todoc.web.dto.SuppleFile;
 public interface SuppleDao 
 {
 	// 글 모두 조회
-	List<Supple> suppleList(Supple supple);
+    List<Supple> suppleList(Supple supple);
 	
 	// 글번호로 글 조회
 	Supple selectSupple(long suppleSeq);
@@ -33,4 +33,7 @@ public interface SuppleDao
 	
 	// 글 삭제
 	int deleteSupple(long suppleSeq);
+	
+	// 글 갯수 조회
+	long countSupple(Supple supple);
 }

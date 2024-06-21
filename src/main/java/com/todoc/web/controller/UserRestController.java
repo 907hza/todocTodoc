@@ -3,7 +3,9 @@ package com.todoc.web.controller;
 import java.util.ArrayList;
 
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,13 +65,14 @@ public class UserRestController
 	@GetMapping("/sign/send")
 	public @ResponseBody String sendSMS(@RequestParam("to") String to) throws Exception
 	{
-		return userService.sendSMS(to);
+		String randNum = userService.rand();
+		return userService.sendSMS(to, randNum);
 	}
 	
 	// 로그인 요청
 	@PostMapping("/login")
 	@ResponseBody
-	public int login(@RequestBody LoginDto loginDto, HttpServletResponse response) 
+	public int login(HttpServletRequest request, @RequestBody LoginDto loginDto, HttpServletResponse response) 
 	{
 	    String userType = "";
 
@@ -91,7 +94,6 @@ public class UserRestController
 
 	    if("MEDICAL".equals(loginDto.getUserType())) 
 	    {
-	    	log.info("UserRestController loginDto.getUsername() : " + loginDto.getUsername());
 	        Clinic clinic = userService.findClinicEmail(loginDto.getUsername());
 	        
 	        if(clinic != null && clinic.getClinicStatus().equals("Y")) 
@@ -101,28 +103,32 @@ public class UserRestController
 		            clinic.setClinicRefreshToken(refreshToken);
 		            userService.clinicRefreshTokenUpdate(clinic);
 		            userType = "MEDICAL";
-	        	}
+		        }
 	        	catch(Exception e)
 	        	{
 	        		return 0;
 	        	}
 	        }
-	        
-	        Pharmacy pharm = userService.findPharmEmail(loginDto.getUsername());
-
-	        if(pharm != null && pharm.getPharmacyStatus().equals("Y")) 
+	        else 
 	        {
-		       try
+		       Pharmacy pharm = userService.findPharmEmail(loginDto.getUsername());
+		       if(pharm != null && pharm.getPharmacyStatus().equals("Y"))
 		       {
-		            pharm.setPharmacyRefreshToken(refreshToken);
-		            userService.PharmRefreshTokenUpdate(pharm);
-		            userType = "MEDICAL";
-	        	}
-	        	catch(Exception e)
-	        	{
-	        		return 0;
-	        	}
-	        } 
+			       try
+			       {
+			            pharm.setPharmacyRefreshToken(refreshToken);
+			            log.info(pharm.getUserEmail());
+			            userService.pharmRefreshTokenUpdate(pharm);
+			            log.info(pharm.getUserEmail());
+
+			            userType = "MEDICAL";
+		        	}
+		        	catch(Exception e)
+		        	{
+		        		return 0;
+		        	}
+		       } 
+		    }
 	    } 
 	    else 
 	    {
@@ -139,7 +145,11 @@ public class UserRestController
 	        if(user.getUserType().equals("ADMIN")) userType = "ADMIN";
 	        else userType = "USER";
 	    }
-
+	    
+     	// 인증 관련 설정값제거
+     	HttpSession session = request.getSession();
+     	session.invalidate();
+     	
 	    Cookie cookie = new Cookie(JwtProperties.HEADER_STRING, JwtProperties.TOKEN_PREFIX + accessToken);
 	    cookie.setHttpOnly(true);
 	    cookie.setMaxAge(JwtProperties.EXPIRATION_TIME);
@@ -148,7 +158,7 @@ public class UserRestController
 	    response.addCookie(cookie);
 	    
 	    log.info("cookie jwt success !");
-
+	    log.info(userType);
 	    switch (userType) 
 	    {
 	        case "ADMIN": return 1;
@@ -158,6 +168,26 @@ public class UserRestController
 	    }
 	}
 
+	// 병의원, 약국 회원가입시 요양기관 가입여부 확인
+	@ResponseBody
+	@GetMapping("/medicalSign/checkInstitution")
+	public ResponseEntity<?> checkInstitution(@RequestParam("institutionNum") String institutionNum)
+	{				
+	    if (institutionNum.isEmpty()) 
+	    {
+	        return ResponseEntity.badRequest().body("조회하신 값이 올바르지 않습니다.");
+	    }
+	    
+	    Institution institution = userService.findInstitution(institutionNum);
+	    
+	    if (institution == null) 
+	    {
+	        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 요양기관은 가입되지 않았습니다.");
+	    }
+	    
+	    return ResponseEntity.ok(institution);
+	}
+	
 	// 병원, 약국 회원 아이디 찾기, 비밀번호 찾기
 	@PostMapping("/login/findIdMedical")
 	public ResponseEntity<?> findIdMedical(@RequestBody FindDto findDto)
@@ -168,16 +198,16 @@ public class UserRestController
 		
 		// 랜덤 문자열
 		String randNum = userService.rand();
-	
+		
+		clinic.setClinicDoctor(findDto.getUserName());
+		pharm.setPharmacistName(findDto.getUserName());
+		
 		if(findDto.getFindKind().equals("ID")) // 아이디 찾기
-		{	
-				clinic.setClinicDoctor(findDto.getUserName());
-				pharm.setPharmacistName(findDto.getUserName());
-
+		{		
 				if(findDto.getSearchType().equals("NAME"))
 				{
-					clinic.setClinicInstinum(findDto.getUserPwd());
-					pharm.setPharmacyInstinum(findDto.getUserPwd());
+					clinic.setClinicRegnum(findDto.getUserPwd());
+					pharm.setPharmacyRegnum(findDto.getUserPwd());
 				}
 				else if(findDto.getSearchType().equals("PHONE"))
 				{
@@ -185,37 +215,34 @@ public class UserRestController
 					pharm.setPharmacyPhone(findDto.getUserPwd());
 				}
 				
-				Clinic clinic2 = userService.findClinicEmail(userService.findClinic(clinic));
-				Pharmacy pharm2 = userService.findPharmEmail(userService.findPharmacy(pharm));
+				clinic = userService.findClinic(clinic);
 				
-				if(clinic2 != null)
+				if(clinic != null)
 				{
-					return ResponseEntity.ok(clinic2);
+					return ResponseEntity.ok(clinic);
 				}
-				else if(pharm != null)
+				else
 				{
+					pharm = userService.findPharmacy(pharm);
+					Pharmacy pharm2 = userService.findPharmEmail(userService.findPharmacy(pharm).getUserEmail());
 					return ResponseEntity.ok(pharm2);
 				}
 		}
 		else if(findDto.getFindKind().equals("PWD")) // 비밀번호 찾기
 		{	
-				clinic.setClinicDoctor(findDto.getUserName());
-				pharm.setPharmacistName(findDto.getUserName());
-
 				if(findDto.getSearchType().equals("PHONE"))
 				{
 					clinic.setClinicPhone(findDto.getUserPwd());
 					pharm.setPharmacyPhone(findDto.getUserPwd());
 					
-					Clinic clinic2 = userService.findClinicEmail(userService.findClinic(clinic));
-					Pharmacy pharm2 = userService.findPharmEmail(userService.findPharmacy(pharm));
+					clinic = userService.findClinic(clinic);
 					
-					if(clinic2 != null)
-					{						
+					if(clinic != null)
+					{							
 						try
 						{
 							// 전송 서비스 추가
-							num = userService.sendSMS(clinic2.getClinicPhone());
+							num = userService.sendSMS(clinic.getClinicPhone(), randNum);
 							return ResponseEntity.ok(num);
 						}
 						catch(Exception e)
@@ -223,12 +250,14 @@ public class UserRestController
 							log.error("phone send fail : ", e);
 						}
 					}
-					else if(pharm != null)
+					else
 					{
+						pharm = userService.findPharmacy(pharm);
+						
 						try
 						{
 							// 전송 서비스 추가
-							num = userService.sendSMS(pharm2.getPharmacyPhone());
+							num = userService.sendSMS(pharm.getPharmacyPhone(), randNum);
 							return ResponseEntity.ok(num);
 							
 						}
@@ -242,12 +271,11 @@ public class UserRestController
 				{
 					clinic.setUserEmail(findDto.getUserPwd());
 					pharm.setUserEmail(findDto.getUserPwd());
-					
-					Clinic clinic2 = userService.findClinicEmail(userService.findClinic(clinic));
-					Pharmacy pharm2 = userService.findPharmEmail(userService.findPharmacy(pharm));
-					
-					if(clinic2 != null)
+										
+					if(userService.findClinic(clinic).getUserEmail() != null)
 					{
+						Clinic clinic2 = userService.findClinicEmail(userService.findClinic(clinic).getUserEmail());
+
 						try
 						{
 							// 전송 서비스 추가
@@ -261,8 +289,10 @@ public class UserRestController
 							log.error("email send fail : ", e);
 						}
 					}
-					else if(pharm != null)
+					else if(userService.findPharmEmail(userService.findPharmacy(pharm).getUserEmail()) != null)
 					{
+						Pharmacy pharm2 = userService.findPharmEmail(userService.findPharmacy(pharm).getUserEmail());
+
 						try
 						{
 							// 전송 서비스 추가
@@ -280,6 +310,87 @@ public class UserRestController
 			}
 		
 		return ResponseEntity.ok(0);
+	}
+
+	// 비밀번호 재발급
+	@PostMapping("/login/reset")
+	public ResponseEntity<?> reset(@RequestParam("userEmail") String userEmail,@RequestParam("userPwd") String userPwd, @RequestParam("userType") String userType)
+	{
+		if(userType.equals("USER"))
+		{
+			User user = userService.findByEmail(userEmail);
+			
+			if(user.getUserStatus().equals("Y"))
+			{
+				if(user.getSocialType() == null)
+				{
+					user.setUserPwd(passwordEncoder.encode(userPwd));
+					
+					if(userService.updateUser(user) > 0)
+					{
+						return ResponseEntity.ok(0);
+					}
+				}
+				
+				return ResponseEntity.ok(2);
+			}
+		}
+		else if(userType.equals("MEDICAL"))
+		{
+			Clinic clinic = userService.findClinicEmail(userEmail);
+			Pharmacy pharm = null;
+			
+			if(clinic != null)
+			{
+				clinic.setUserPwd(passwordEncoder.encode(userPwd));
+				
+				if(userService.updateClinic(clinic) > 0)
+				{
+					return ResponseEntity.ok(0);
+				}
+			}
+			else
+			{
+				pharm = userService.findPharmEmail(userEmail);
+				pharm.setUserPwd(passwordEncoder.encode(userPwd));
+				
+				if(userService.updatePharm(pharm) > 0)
+				{
+					return ResponseEntity.ok(0);
+				}
+			}
+		}
+		
+		return ResponseEntity.badRequest().body("입력 값이 올바르지 않습니다.");
+	}
+	
+	// 제휴
+	@PostMapping("/sign/institution")
+	public ResponseEntity<?> signInstitution(@RequestParam("institutionFlag") String institutionFlag, @RequestParam("institutionNum") String institutionNum, 
+			@RequestParam("institutionName") String institutionName, @RequestParam("addr") String addr, @RequestParam("zipcode") String zipcode)
+	{
+		if(!institutionFlag.isEmpty() && !institutionNum.isEmpty() && !institutionName.isEmpty() && !addr.isEmpty() && !zipcode.isEmpty())
+		{
+			Institution institution = new Institution();
+			
+			institution.setAddr(addr);
+			institution.setInstitutionName(institutionName);
+			institution.setInstitutionNum(institutionNum);
+			institution.setZipcode(zipcode);
+			
+			if(institutionFlag.equals("약국")) institution.setInstitutionFlag("약국");
+			else institution.setInstitutionFlag("병원");
+			
+			if(userService.alliance(institution) > 0)
+			{
+				return ResponseEntity.ok(2);
+			}
+			
+			return ResponseEntity.ok(500);
+
+		}
+		
+		return ResponseEntity.ok(404);
 	}
 	
 	// 일반 회원 아이디 찾기, 비밀번호 찾기
@@ -302,10 +413,6 @@ public class UserRestController
 	            {
 	                user.setUserPhone(findDto.getUserPwd());
 	            } 
-	            else 
-	            {
-	                return ResponseEntity.ok(0);
-	            }
 
 	            User foundUser = userService.findUser(user);
 	            
@@ -313,12 +420,17 @@ public class UserRestController
 	            {
 	                return ResponseEntity.ok(foundUser);
 	            }
+	            else
+	            {
+	            	log.warn("User not found for {}", user);
+	            	return ResponseEntity.notFound().build();
+	            }
 	        }
 	        else if (findDto.getFindKind().equals("PWD")) 
 	        {
 	            User user = new User();
 	            user.setUserName(findDto.getUserName());
-	            
+
 	            if (findDto.getSearchType().equals("PHONE")) 
 	            {
 	                user.setUserPhone(findDto.getUserPwd());
@@ -327,20 +439,17 @@ public class UserRestController
 	            {
 	                user.setUserEmail(findDto.getUserPwd());
 	            } 
-	            else 
-	            {
-	                return ResponseEntity.ok(0);
-	            }
 
 	            User foundUser = userService.findUser(user);
-	            
+	            log.info(foundUser.getUserEmail());
 	            if (foundUser != null && foundUser.getUserStatus().equals("Y")) 
 	            {
 	                String randNum = userService.rand();
 	                
 	                if (findDto.getSearchType().equals("PHONE")) 
 	                {
-	                    userService.sendSMS(foundUser.getUserEmail());
+	                    userService.sendSMS(foundUser.getUserPhone(), randNum);
+	                    return ResponseEntity.ok(randNum);
 	                } 
 	                else if (findDto.getSearchType().equals("MAIL")) 
 	                {
@@ -354,76 +463,9 @@ public class UserRestController
 	    } 
 	    catch (Exception e) 
 	    {
-	        log.error("Error: ", e);
+	    	log.error("Error: ", e);
 	    }
+	    
 	    return ResponseEntity.ok(0);
-	}
-
-
-	
-	// 병의원, 약국 회원가입시 요양기관 가입여부 확인
-	@ResponseBody
-	@GetMapping("/medicalSign/checkInstitution")
-	public ResponseEntity<?> checkInstitution(@RequestParam("institutionNum") String institutionNum)
-	{				
-	    if (institutionNum.isEmpty()) 
-	    {
-	        return ResponseEntity.badRequest().body("조회하신 값이 올바르지 않습니다.");
-	    }
-	    
-	    Institution institution = userService.findInstitution(institutionNum);
-	    
-	    if (institution == null) 
-	    {
-	        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 요양기관은 가입되지 않았습니다.");
-	    }
-	    
-	    return ResponseEntity.ok(institution);
-	}
-
-	// 비밀번호 재발급
-	@PostMapping("/login/reset")
-	public ResponseEntity<?> reset(@RequestParam("userEmail") String userEmail,@RequestParam("userPwd") String userPwd, @RequestParam("userType") String userType)
-	{
-		if(userType.equals("USER"))
-		{
-			User user = userService.findByEmail(userEmail);
-			
-			if(user.getUserStatus().equals("Y"))
-			{
-				user.setUserPwd(passwordEncoder.encode(userPwd));
-				
-				if(userService.updateUser(user) > 0)
-				{
-					return ResponseEntity.ok(0);
-				}
-			}
-		}
-		else if(userType.equals("CLINIC"))
-		{
-			Clinic clinic = userService.findClinicEmail(userEmail);
-			Pharmacy pharm = userService.findPharmEmail(userEmail);
-			
-			if(clinic != null)
-			{
-				clinic.setUserPwd(passwordEncoder.encode(userPwd));
-				
-				if(userService.updateClinic(clinic) > 0)
-				{
-					return ResponseEntity.ok(0);
-				}
-			}
-			else if(pharm != null)
-			{
-				pharm.setUserPwd(passwordEncoder.encode(userPwd));
-				
-				if(userService.updatePharm(pharm) > 0)
-				{
-					return ResponseEntity.ok(0);
-				}
-			}
-		}
-		
-		return ResponseEntity.badRequest().body("입력 값이 올바르지 않습니다.");
 	}
 }

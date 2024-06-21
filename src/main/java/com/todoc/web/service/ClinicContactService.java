@@ -26,7 +26,7 @@ public class ClinicContactService {
 	@Autowired
 	private ClinicContactDao clinicContactDao;
 	
-	//대면 병원 리스트(total로 바꿔보기)
+	//대면 병원 리스트(모두 불러오기)
 	public List<ClinicContact> clinicList(){ 
 		List<ClinicContact> list =null;
 		
@@ -40,27 +40,52 @@ public class ClinicContactService {
 		
 	}
 	
-	//병원 리스트 total
-	public List<ClinicContact> clinicListTotal(ClinicContact search){
-		List<ClinicContact> list =null;
-		
-		try {
-			list = clinicContactDao.clinicListTotal(search); 	
-		}catch(Exception e) {
-			logger.error("[ClinicContactService] clinicListTotal Exception",e);
-		}
-
-		return list;
-		
-	}
 	
 	//병원 리스트 조회(category)
 	public List <ClinicContact> clinicListCategory(ClinicContact search){
-		List<ClinicContact> list =null;
-		String searchValueCode = search.getSearchValue();
-		String searchValue=null;
-		if(searchValueCode != null) {
+		List<ClinicContact> list = null;
 		
+		
+		if(search != null && search.getGuValue() != null) {
+			Integer guValueIndex = search.getGuValue();
+			search.setGuName(search.getGuList().get(guValueIndex));
+		}
+		
+
+		list =clinicContactDao.clinicListCategory(search);
+		
+		return list;
+
+	}
+	
+	//총 게시물 수
+	public long listCount(ClinicContact search) {
+		long count = 0;
+		try {
+			if(search != null && search.getGuValue() != null) {
+				Integer guValueIndex = search.getGuValue();
+				search.setGuName(search.getGuList().get(guValueIndex));
+			}
+			if(search != null && search.getSearchValue() != null) {
+			search.setSearchValue(codeChangeName(search.getSearchValue()));  
+			}
+			if(search != null && search.getGuValue() != null) {
+				Integer guValueIndex = search.getGuValue();
+				search.setGuName(search.getGuList().get(guValueIndex));
+			}
+
+			count = clinicContactDao.listCount(search);
+		} catch (Exception e) {
+			logger.error("[ClinicContactService] listCount Exception",e);
+		}
+		
+		return count;
+	}
+	
+	//카테고리 코드 명칭으로 변환
+	public String codeChangeName(String searchValueCode) {
+	
+			String searchValue = null;
 			switch(searchValueCode) { 
 				// 진료과목 검색
 				case "1": searchValue = "피부과";
@@ -129,20 +154,11 @@ public class ClinicContactService {
 				case "40": searchValue = "기력저하";
 					break;
 				
-				
 			}
-		}
-		if(search != null && search.getGuValue() != null) {
-			Integer guValueIndex = search.getGuValue();
-			search.setGuName(search.getGuList().get(guValueIndex));
-		}
 		
-		search.setSearchValue(searchValue);
-		list =clinicContactDao.clinicListCategory(search);
-		
-		return list;
-
+		return searchValue;
 	}
+	
 	
 	//영업시간 전체 리스트
 	public List<ClinicContact> clinicTimeList(){   
@@ -273,74 +289,82 @@ public class ClinicContactService {
 	public List<String> reserveTimebutton(String clinicInstinum) {
 		ClinicContact clinicContact = null;
 		
-	
 			List<String> clinicTimeList = new ArrayList<>(); 
 			List<String> nextTimes = new ArrayList<>();
-
-			//해당병원 진료시간
-			clinicContact = clinicContactDao.timeOnly(clinicInstinum);
-			
-			//진료시간 리스트
-			String[] clinicTime = clinicContact.getClinicTime().split(",");	
-
-			 // 현재 시간 가져오기
-	        LocalTime currentTime = LocalTime.now().plusHours(1);
-			
-	    	//현재 요일
-	        LocalDateTime currentDay = LocalDateTime.now();
-			DayOfWeek dayOfWeek = currentDay.getDayOfWeek(); 
-			int dayIndex = dayOfWeek.getValue()-1;
-			String todayRunningTime = clinicTime[dayIndex]; //9:00-18:00
-			
-			//현재 날짜 형식
-	        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-	        // 날짜를 문자열로 변환
-	        String selectedDate = currentDay.format(formatter);
-	        
-			if(!todayRunningTime.equals("휴무")) {
-				// 현재 시간 이후의 시간대 구하기
-		        String[] runningTimes = todayRunningTime.split("-");
-		        String start = runningTimes[0]; // 9:00
-		        LocalTime startTime = LocalTime.parse(start, DateTimeFormatter.ofPattern("H:mm"));
+			List<String> availableList = null;
+			List<String> reservedTime = null;
+			try {
+				//해당병원 진료시간
+				clinicContact = clinicContactDao.timeOnly(clinicInstinum);
+				
+				
+				//진료시간 리스트
+				String[] clinicTime = clinicContact.getClinicTime().split(",");	
+				for (String time : clinicTime) {
+				    
+				}
 	
-		        String end = runningTimes[1]; // 18:00
-		        LocalTime endTime = LocalTime.parse(end, DateTimeFormatter.ofPattern("H:mm"));
+				 // 현재 시간 가져오기
+		        LocalTime currentTime = LocalTime.now().plusHours(1);
+				
+		    	//현재 요일
+		        LocalDateTime currentDay = LocalDateTime.now();
+				DayOfWeek dayOfWeek = currentDay.getDayOfWeek(); 
+				int dayIndex = dayOfWeek.getValue()-1;
+				String todayRunningTime = clinicTime[dayIndex]; //9:00-18:00
+				
+				//현재 날짜 형식
+		        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 	
-		        // 현재 시간이 영업 시간 내에 있는 경우에만 다음 시간대를 계산
+		        // 날짜를 문자열로 변환
+		        String selectedDate = currentDay.format(formatter);
 		        
-		        if (currentTime.compareTo(startTime) >= 0 && currentTime.compareTo(endTime) <= 0) {
-		            LocalTime nextTime;
-		            if (currentTime.getMinute() < 20) {
-		                nextTime = currentTime.withMinute(20);
-		            } else if (currentTime.getMinute() < 40) {
-		                nextTime = currentTime.withMinute(40);
-		            } else {
-		                // 시간을 1시간 증가시키고 분을 0으로 설정
-		                nextTime = currentTime.plusHours(1).withMinute(0);
-		            }
+				if(!todayRunningTime.equals("휴무")) {
+					// 현재 시간 이후의 시간대 구하기
+			        String[] runningTimes = todayRunningTime.split("-");
+			        String start = runningTimes[0]; // 9:00
+			        LocalTime startTime = LocalTime.parse(start, DateTimeFormatter.ofPattern("H:mm"));
 
-		            // 다음 시간대부터 영업 마감 시간까지 20분 간격으로 시간 계산하여 리스트에 추가
-		            while (nextTime.compareTo(endTime) <= 0) {
-		                nextTimes.add(nextTime.format(DateTimeFormatter.ofPattern("HH:mm")));
-		                nextTime = nextTime.plusMinutes(20);
-		            }
-  
-		        }
-		        if(nextTimes.isEmpty()) {
-		            nextTimes.add("예약가능한 시간이 없습니다.");
+			        String end = runningTimes[1]; // 18:00
+			        LocalTime endTime = LocalTime.parse(end, DateTimeFormatter.ofPattern("H:mm"));
+		
+			        // 현재 시간이 영업 시간 내에 있는 경우에만 다음 시간대를 계산
+			        
+			        if (currentTime.compareTo(startTime) >= 0 && currentTime.compareTo(endTime) <= 0) {
+			            LocalTime nextTime;
+			            if (currentTime.getMinute() < 20) {
+			                nextTime = currentTime.withMinute(20);
+			            } else if (currentTime.getMinute() < 40) {
+			                nextTime = currentTime.withMinute(40);
+			            } else {
+			                // 시간을 1시간 증가시키고 분을 0으로 설정
+			                nextTime = currentTime.plusHours(1).withMinute(0);
+			            }
+			            // 다음 시간대부터 영업 마감 시간까지 20분 간격으로 시간 계산하여 리스트에 추가
+			            while (nextTime.compareTo(endTime) <= 0) {
+			                nextTimes.add(nextTime.format(DateTimeFormatter.ofPattern("HH:mm")));
+			                nextTime = nextTime.plusMinutes(20);
+			                
+			            }
+	  
+			        }
+			        if(nextTimes.isEmpty()) {
+			            nextTimes.add("예약가능한 시간이 없습니다.");
+	
+			        }
+				}else {//"휴무" 인경우
+		            nextTimes.add("휴무입니다. 다른 날짜를 선택하세요.");
+	
+				}
+	
+	          //예약된 시간대 리스트 제거
+	          
+	          reservedTime = reservedTime(clinicInstinum, selectedDate);
 
-		        }
-			}else {//"휴무" 인경우
-	            nextTimes.add("휴무입니다. 다른 날짜를 선택하세요.");
-
+	          availableList = excludeTimes(nextTimes, reservedTime);
+			} catch (Exception e) {
+				logger.error("[ClinicContactService] reserveTimebutton Exception",e);
 			}
-
-          //예약된 시간대 리스트 제거
-          List<String> reservedTime = null;
-          reservedTime = reservedTime(clinicInstinum, selectedDate);
-    		
-          List<String> availableList = excludeTimes(nextTimes, reservedTime);
 
 		return availableList;
 	}
@@ -583,128 +607,279 @@ public class ClinicContactService {
 
 		 return "N";
 	 }
+	 
+	//대면 예약 확인
+	 public ReservationContact contactReservationCheck(ReservationContact ReservationContact) {
+		 ReservationContact reservationContact = null;
+		 
+		 try {
+			 reservationContact =clinicContactDao.contactReservationCheck(reservationContact);
+		} catch (Exception e) {
+			 logger.error("[ClinicContactService] contactReservationCheck Exception",e);
+
+		}
+		 return reservationContact;
+	 }
+		
+	 
 	
-	//예약확인 리스트
-		 public List<ReservationContact> reservationList(String clinicInstinum)
+	 //예약확인 리스트
+	 public List<ReservationContact> reservationList(String clinicInstinum)
+	 {
+		 List<ReservationContact> list = null;
+		 
+		 try
 		 {
-			 List<ReservationContact> list = null;
-			 
-			 try
-			 {
-				 list = clinicContactDao.reservationList(clinicInstinum);
-			 }
-			 catch(Exception e)
-			 {
-				 logger.error("[ClinicContactService] reservationList Exception",e);
-			 }
-			 return list;
+			 list = clinicContactDao.reservationList(clinicInstinum);
+		 }
+		 catch(Exception e)
+		 {
+			 logger.error("[ClinicContactService] reservationList Exception",e);
+		 }
+		 return list;
+	 }
+	 
+	 
+	 //예약확인 의사 상세
+	 public ClinicContact clinicListView(String userEmail)
+	 {
+		 ClinicContact clinic = null;
+		 
+		 try
+		 {
+			 clinic = clinicContactDao.clinicListView(userEmail);
+		 }
+		 catch(Exception e)
+		 {
+			 logger.error("[ClinicContactService] clinicListView Exception",e);
 		 }
 		 
+		 return clinic;
+	 }
+	 
+	 //예약리스트 예약승인
+	 public int reservationApprove(long reservationSeq)
+	 {
+		 int count = 0;
 		 
-		 //예약확인 의사 상세
-		 public ClinicContact clinicListView(String userEmail)
+		 try
 		 {
-			 ClinicContact clinic = null;
-			 
-			 try
-			 {
-				 clinic = clinicContactDao.clinicListView(userEmail);
-			 }
-			 catch(Exception e)
-			 {
-				 logger.error("[ClinicContactService] clinicListView Exception",e);
-			 }
-			 
-			 return clinic;
+			 count = clinicContactDao.reservationApprove(reservationSeq);
+		 }
+		 catch(Exception e)
+		 {
+			 logger.error("[ClinicContactService] reservationApprove Exception",e);
 		 }
 		 
-		 //예약리스트 예약승인
-		 public int reservationApprove(long reservationSeq)
+		 return count;
+	 }
+	 
+	 //예약리스트 예약취소
+	 public int reservationCancel(long reservationSeq)
+	 {
+		 int count = 0;
+		 
+		 try
 		 {
-			 int count = 0;
-			 
-			 try
-			 {
-				 count = clinicContactDao.reservationApprove(reservationSeq);
-			 }
-			 catch(Exception e)
-			 {
-				 logger.error("[ClinicContactService] reservationApprove Exception",e);
-			 }
-			 
-			 return count;
+			 count = clinicContactDao.reservationCancel(reservationSeq);
+		 }
+		 catch(Exception e)
+		 {
+			 logger.error("[ClinicContactService] reservationCancel Exception",e);
 		 }
 		 
-		 //예약리스트 예약취소
-		 public int reservationCancel(long reservationSeq)
+		 return count;
+	 }
+	 
+	 //예약승인 리스트 토탈카운트
+	 public int reservationListTotal(String clinicInstinum)
+	 {
+		 int count = 0;
+		 
+		 try
 		 {
-			 int count = 0;
-			 
-			 try
-			 {
-				 count = clinicContactDao.reservationCancel(reservationSeq);
-			 }
-			 catch(Exception e)
-			 {
-				 logger.error("[ClinicContactService] reservationCancel Exception",e);
-			 }
-			 
-			 return count;
+			 count = clinicContactDao.reservationListTotal(clinicInstinum);
+		 }
+		 catch(Exception e)
+		 {
+			 logger.error("[ClinicContactService] reservationListTotal Exception",e);
 		 }
 		 
-		 //예약승인 리스트 토탈카운트
-		 public int reservationListTotal(String clinicInstinum)
+		 return count;
+	 }
+	 
+	 //진료 대기 리스트 토탈카운트
+	 public int contactListTotal(String clinicInstinum)
+	 {
+		 int count = 0;
+		 
+		 try
 		 {
-			 int count = 0;
-			 
-			 try
-			 {
-				 count = clinicContactDao.reservationListTotal(clinicInstinum);
-			 }
-			 catch(Exception e)
-			 {
-				 logger.error("[ClinicContactService] reservationListTotal Exception",e);
-			 }
-			 
-			 return count;
+			 count = clinicContactDao.contactListTotal(clinicInstinum);
+		 }
+		 catch(Exception e)
+		 {
+			 logger.error("[ClinicContactService] contactListTotal Exception",e);
 		 }
 		 
-		 //진료 대기 리스트 토탈카운트
-		 public int contactListTotal(String clinicInstinum)
+		 return count;
+	 }
+	 
+	 
+	 //이메일로 병원 정보 불러오기
+	 public ClinicContact clinicfindByEmail(String userEmail)
+	 {
+		 ClinicContact clinic = null;
+		 
+		 try
 		 {
-			 int count = 0;
-			 
-			 try
-			 {
-				 count = clinicContactDao.contactListTotal(clinicInstinum);
-			 }
-			 catch(Exception e)
-			 {
-				 logger.error("[ClinicContactService] contactListTotal Exception",e);
-			 }
-			 
-			 return count;
+			 clinic = clinicContactDao.clinicfindByEmail(userEmail);
+		 }
+		 catch(Exception e)
+		 {
+			 logger.error("[ClinicContactService] clinicfindByEmail Exception",e);
 		 }
 		 
-		 
-		 //이메일로 병원 정보 불러오기
-		 public ClinicContact clinicfindByEmail(String userEmail)
-		 {
-			 ClinicContact clinic = null;
-			 
-			 try
-			 {
-				 clinic = clinicContactDao.clinicfindByEmail(userEmail);
-			 }
-			 catch(Exception e)
-			 {
-				 logger.error("[ClinicContactService] clinicfindByEmail Exception",e);
-			 }
-			 
-			 return clinic;
-		 }
+		 return clinic;
+	 }
+	 
+	 
+	 ////////////////////////////////////////////////////////////////// 5.20 승준코드
+	//testTime
+	public ClinicContact testTime(String userEmail)
+	{
+		return clinicContactDao.testTime(userEmail);
+	}
+	
+	//마이페이지 진료내역 리스트
+	public ReservationContact mypageReservationList(String userEmail)
+	{
+		ReservationContact clinicContact = null;
+		
+		try
+		{
+			clinicContact = clinicContactDao.mypageReservationList(userEmail);
+		}
+		catch(Exception e)
+		{
+			logger.error("[ClinicContactService] mypageReservationList Exception",e);
+		}
+		
+		return clinicContact;
+	}
+	
+	//예약번호로 예약리스트
+	public ReservationContact resrvationClickMapping(long reservationSeq)
+	{
+		ReservationContact reservation = null;
+		
+		try
+		{
+			reservation = clinicContactDao.resrvationClickMapping(reservationSeq);
+		}
+		catch(Exception e)
+		{
+			logger.error("[ClinicContactService] ReservationContact Exception",e);
+		}
+		
+		return reservation;
+	}
+	
+	//예약상태 진로입장으로 변경
+	public int reservationStatusUpdate(long reservationSeq)
+	{
+		int count = 0;
+		
+		try
+		{
+			count = clinicContactDao.reservationStatusUpdate(reservationSeq);
+		}
+		catch(Exception e)
+		{
+			logger.error("[ClinicContactService] reservationStatusUpdate Exception",e);
+		}
+		
+		return count;
+	}
+	
+	//진료완료로 변경
+		public int streamEnd(long reservationSeq)
+		{
+			int count = 0;
+			
+			try
+			{
+				count = clinicContactDao.streamEnd(reservationSeq);
+			}
+			catch(Exception e)
+			{
+				logger.error("[ClinicContactService] streamEnd Exception",e);
+			}
+			
+			return count;
+		}
+		
+		
+	//진료취소
+	public int contactCancel(long reservationSeq)
+	{
+		int count = 0;
+		
+		try
+		{
+			count = clinicContactDao.contactCancel(reservationSeq);
+		}
+		catch(Exception e)
+		{
+			logger.error("[ClinicContactService] streamEnd Exception",e);
+		}
+		
+		return count;
+	}
 	
 	
+	//대면 진료리스트
+	public List<ReservationContact> contactLogList2(ReservationContact reservationContact)
+	{
+		List<ReservationContact> list = null;
+		
+		try
+		{
+			list = clinicContactDao.contactLogList2(reservationContact);
+		}
+		catch(Exception e)
+		{
+			logger.error("[ClinicContactService] contactLogList Exception",e);
+		}
+		
+		return list;
+	}
+	
+	//대면 진료리스트 토탈
+	public int contactLogTotal2(String userEmail)
+	{
+		int count = 0;
+		
+		try
+		{
+			count = clinicContactDao.contactLogTotal2(userEmail);
+		}
+		catch(Exception e)
+		{
+			logger.error("[ClinicContactService] contactLogTotal2 Exception",e);
+		}
+		
+		return count;
+	}
+	
+	//////////////////////////////////////5.24 승준코드	//////////////////////////////////////////////////
+
+	 
+	 
+	 
+	 
+	 
 }
+
 
 

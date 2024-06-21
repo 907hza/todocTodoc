@@ -19,7 +19,7 @@ public interface UserDao
 	void clinicRefreshTokenUpdate(Clinic clinic);
 	
 	// 약국 리프레쉬 토큰 업데이트
-	void PharmRefreshTokenUpdate(Pharmacy pharmacy);
+	void pharmRefreshTokenUpdate(Pharmacy pharmacy);
 	
 	// 이메일로 회원 확인
 	User findByEmail(String userEmail);
@@ -55,10 +55,10 @@ public interface UserDao
 	User findUser(User user);
 	
 	// 병원 유저 아이디/비밀번호 찾기
-	String findClinic(Clinic clinic);
+	Clinic findClinic(Clinic clinic);
 	
 	// 약국 유저 아이디/비밀번호 찾기
-	String findPharmacy(Pharmacy pharmacy);
+	Pharmacy findPharmacy(Pharmacy pharmacy);
 	
 	// 비밀번호 수정
 	int updateUser(User user);
@@ -70,8 +70,31 @@ public interface UserDao
 	// 소셜로그인 회원 정보 저장
 	int insertSocial(User user);
 	
+	// 제휴
+	int alliance(Institution institution);
+	
+	/*승준*/
 	// 회원정보 수정
 	int userUpdate(User user);
 	
+	// 소셜로그인 회원 정보 추가 입력
+	int oauthUpdate(User user);
+
+	// 소셜로그인 키값으로 조회
+	User findByPwd(String userPwd);
 	
+	//의사 약국 회원정보수정
+	int updateMedicalClinic(Clinic clinic);
+	
+	//의사 사진파일
+	ClinicFile clinicFileView(String clinicInstinum);
+	
+	//인감 사진파일
+	StampFile clinicStampFileView(String userEmail);
+	
+	//의사 사진파일 삭제
+	int clinicFileDelete(String clinicInstinum);
+	//인감 사진파일 삭제
+	int clinicStampDelete(String userEmail);
 }
+

@@ -10,6 +10,7 @@ import com.todoc.web.dto.Untact;
 
 @Mapper
 public interface UntactDao {
+
 	List<Untact> subjectList(Untact untact);
 	
 	Untact selectClinicDetail(Untact untact);
@@ -27,5 +28,13 @@ public interface UntactDao {
 	int prescriptionInsert(Presc presc);
 
 	int getprescriptionSeq();
+	
+	List<Presc> prescriptionDetail(Presc presc);
+
+	int updateReserStatus(int reservationSeq);
+
+	String getClinicInfo(String clinicInstinum);
+
+	int updatePrescriptionStatus(int reservationSeq);
 
 }

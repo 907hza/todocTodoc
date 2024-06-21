@@ -9,6 +9,8 @@
  */
 package com.todoc.web.util;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
@@ -25,6 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import com.todoc.web.dto.FileData;
 
 /**
  * <pre>
@@ -1050,5 +1054,135 @@ public final class HttpUtil {
 	 * @param newFileName   새로운 파일명
 	 * @return FileData
 	 */
+	
+	
+	/**
+	 * <pre>
+	 * 메소드명   : getFile
+	 * 작성일     : 2021. 1. 18.
+	 * 작성자     : daekk
+	 * 설명       : 업로드된 파일을 얻는다.
+	 * </pre>
+	 * @param request MultipartHttpServletRequest
+	 * @param name    태그명
+	 * @param saveDirectory 저장 디렉토리
+	 * @return FileData
+	 */
+	public static FileData getFile(MultipartHttpServletRequest request, String name, String saveDirectory)
+	{
+		return getFile(request, name, saveDirectory, FileUtil.uniqueFileName());
+	}
+	
+	/**
+	 * <pre>
+	 * 메소드명   : getFile
+	 * 작성일     : 2021. 1. 20.
+	 * 작성자     : daekk
+	 * 설명       : 업로드된 파일을 얻는다.
+	 * </pre>
+	 * @param request       MultipartHttpServletRequest 
+	 * @param name          태그명
+	 * @param saveDirectory 저장 디렉토리
+	 * @param newFileName   새로운 파일명
+	 * @return FileData
+	 */
+	public static FileData getFile(MultipartHttpServletRequest request, String name, String saveDirectory, String newFileName)
+	{
+		FileData data = null;
+		
+		logger.debug("name          : " + name);
+		logger.debug("saveDirectory : " + saveDirectory);
+		logger.debug("newFileName   : " + newFileName);
+		
+		if(!StringUtil.isEmpty(name) && !StringUtil.isEmpty(saveDirectory))
+		{
+			MultipartFile file = request.getFile(name);
+			
+			if(file != null && file.getSize() > 0)
+    		{
+    			try
+    			{
+    				if(FileUtil.createDirectory(saveDirectory))
+    				{
+    					data = new FileData();
+        						
+                	    data.setName(name);
+                	    data.setFileOrgName(file.getOriginalFilename());
+                	            
+                	    logger.debug("org file name : " + data.getFileOrgName());
+                	            
+        	            String strFileExt = FileUtil.getFileExtension(data.getFileOrgName());
+        	            
+        	            if(!StringUtil.isEmpty(newFileName))
+        	            {
+            	            if(!StringUtil.isEmpty(strFileExt))
+            	            {
+            	            	newFileName += "." + strFileExt;
+            	            	data.setFileExt(strFileExt);
+            	            }
+        	            }
+        	            else
+        	            {
+        	            	newFileName = FileUtil.uniqueFileName(strFileExt);
+        	            	
+        	            	if(!StringUtil.isEmpty(strFileExt))
+            	            {
+            	            	data.setFileExt(strFileExt);
+            	            }
+        	            }
+        	            
+        	            data.setFileName(newFileName);
+        	            data.setFileSize(file.getSize());
+        	            
+        	            String strFileFullPath = saveDirectory + FileUtil.getFileSeparator() + data.getFileName();
+        	            
+        	            if(FileUtil.isFile(strFileFullPath))
+        	            {
+        	            	logger.debug("delete file : " + strFileFullPath);
+        	            	
+        	            	FileUtil.deleteFile(strFileFullPath);
+        	            	
+        	            }
+        	            
+        	            logger.debug("new file name : " + data.getFileName());
+        	            logger.debug("file ext      : " + data.getFileExt());
+        	            logger.debug("file size     : " + data.getFileSize());
+        	            	
+        				file.transferTo(new File(new File(saveDirectory), data.getFileName()));// resources/upload밑에 파일 올라가는 코드
+        				
+        				data.setFilePath(saveDirectory + FileUtil.getFileSeparator() + data.getFileName());
+    				}
+    				else
+    				{
+    					logger.error("name          : " + name);
+    					logger.error("saveDirectory : " + saveDirectory);
+    					logger.error("failed to create directory.");
+    				}
+    			}
+    			catch(IllegalStateException e)
+    			{
+    				data = null;
+    				logger.error("IllegalStateException : " + e.getMessage());
+    				
+    				e.printStackTrace();
+    			}
+    			catch(IOException e)
+    			{
+    				data = null;
+    				logger.error("IOException : " + e.getMessage());
+    				
+    				e.printStackTrace();
+    			}
+    		}
+		}
+		else
+		{
+			logger.error("name          : " + name);
+			logger.error("saveDirectory : " + saveDirectory);
+		}
+				
+		return data;
+	}
+
 	
 }

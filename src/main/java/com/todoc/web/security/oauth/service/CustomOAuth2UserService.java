@@ -1,6 +1,11 @@
 package com.todoc.web.security.oauth.service;
 
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -8,6 +13,9 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 
@@ -51,34 +59,34 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 	    {
 	        System.out.println(entry.getKey() + ": " + entry.getValue());
 	    }
+	    
+        String userIdAttributeName = null;
+        String userNameAttributeName = null;
+        String email = null;
 
-	    String userIdAttributeName = null;
-	    String userNameAttributeName = null;
-	    String email = null;
-
-	    if (registrationId.equals("kakao")) 
-	    {
-	        Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
-	        email = (String) kakaoAccount.get("email");
-	        userNameAttributeName = "kakao_account.email";
-	    } 
-	    else if (registrationId.equals("naver")) 
-	    {
-	        Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-	        email = (String) response.get("email");
-	        userNameAttributeName = "response.email";
-	        userIdAttributeName = "id";
-	    } 
-	    else 
-	    {
-	        // Google과 같은 경우 이메일 속성이 직접 반환되는 것으로 가정
-	        email = (String) attributes.get("email");
-	        userNameAttributeName = "email";
-	    }
+        if (NAVER.equals(registrationId))
+        {
+            Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+            
+            email = (String) response.get("id");
+            userNameAttributeName = "response";
+            userIdAttributeName = "response";
+        }
+        else if (KAKAO.equals(registrationId))
+        {   
+            userNameAttributeName = "id";
+            userIdAttributeName = "id";
+            email = "id";
+        }
+        else 
+        {
+            email = (String) attributes.get("email");
+            userNameAttributeName = "email";
+        }
 
 	    if (email == null) 
 	    {
-	        throw new OAuth2AuthenticationException(new OAuth2Error("email_not_found"), "Email not found from OAuth2 provider");
+	        throw new OAuth2AuthenticationException(new OAuth2Error("email_not_found"), "Email not found");
 	    }
 
 	    log.info("=== loadUser === : " + email);
@@ -86,37 +94,16 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 	    OAuthAttributes oauthAtt = OAuthAttributes.of(socialType, userNameAttributeName, attributes);
 
 	    User user = getUser(oauthAtt, socialType);
-
-	    if (registrationId.equals("kakao"))
-	    {
-	        return new CustomOAuth2User(
-	                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getUserType())),
-	                attributes,
-	                "id",
-	                email,
-	                "ROLE_" + user.getUserType()
-	        );
-	    } 
-	    else if (registrationId.equals("naver")) 
-	    {
-	        return new CustomOAuth2User(
-	                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getUserType())),
-	                attributes,
-	                userIdAttributeName,
-	                email,
-	                "ROLE_" + user.getUserType()
-	        );
-	    }
-
+	    
 	    return new CustomOAuth2User(
 	            Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getUserType())),
 	            attributes,
-	            "sub",
+	            userNameAttributeName,
 	            email,
 	            "ROLE_" + user.getUserType()
 	    );
 	}
-	
+    
 	// 해당하는 registration 의 소셜 타입 가져오기
 	private SocialType getSocialType(String registrationId)
 	{
@@ -140,6 +127,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 		
 		if(findUser != null)
 		{
+			log.info(findUser.getUserEmail());
 			return findUser;
 		}
 		
@@ -149,6 +137,8 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 	// OAuthAtribute 의 toEntity 메소드를 총해서 User 객체 생성 후 반환 >> DB 저장
 	private User saveUser(OAuthAttributes attributes, SocialType socialType)
 	{
+		log.info("getUser 소셜로그인 회원 저장");
+
 		User user = attributes.toEntity(socialType, attributes.getOauth2User());
 		userDao.insertSocial(user);
 		return user;
