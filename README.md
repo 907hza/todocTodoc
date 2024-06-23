@@ -60,6 +60,7 @@
   &nbsp;&nbsp;&nbsp;&nbsp;- 비밀번호 찾기 : 이름,이메일 인증 / 이름,전화번호 인증을 통해 인증 후 새 비밀번호 재설정<br>
   <br><b>4. 맞춤 영양제</b><br>
   &nbsp;&nbsp;&nbsp;&nbsp;- CRUD, 페이징, 검색
+  coolSms API : https://blog.naver.com/907hz_/223488534078
 </p>
 <br><br>
 <h3>(7) 회고록</h3>
