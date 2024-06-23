@@ -43,7 +43,7 @@
 <br><br>
 <h3>(5) 핵심 기술</h3>
 <img src="https://github.com/907hza/todocTodoc/assets/145747413/472e8ad8-91a7-4f2c-a410-26746509b1d8" >
-<br><br>
+<br><br><br>
 <h3>(6) 나의 기능 설명</h3>
 <p>
   <b>1. 회원가입</b><br>
