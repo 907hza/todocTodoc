@@ -61,7 +61,8 @@
   <br><b>4. 맞춤 영양제</b><br>
   &nbsp;&nbsp;&nbsp;&nbsp;- CRUD, 페이징, 검색<br><br>
   <b>coolSms API : </b>https://blog.naver.com/907hz_/223488534078<br>
-  <b>email : </b>https://blog.naver.com/907hz_/223488546152
+  <b>email : </b>https://blog.naver.com/907hz_/223488546152<br>
+  <b>다중 첨부파일 :</b>https://blog.naver.com/907hz_/223488554035
 </p>
 <br><br>
 <h3>(7) 회고록</h3>
