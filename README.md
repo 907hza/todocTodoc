@@ -59,7 +59,7 @@
   &nbsp;&nbsp;&nbsp;&nbsp;- 아이디 찾기 : 이름,생년월일(병원/약국은 사업자 등록번호)/이름,전화번호로 조회<br>
   &nbsp;&nbsp;&nbsp;&nbsp;- 비밀번호 찾기 : 이름,이메일 인증 / 이름,전화번호 인증을 통해 인증 후 새 비밀번호 재설정<br>
   <br><b>4. 맞춤 영양제</b><br>
-  &nbsp;&nbsp;&nbsp;&nbsp;- CRUD, 페이징, 검색<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;- CRUD, 페이징, 검색<br><br>
   <b>coolSms API : </b>https://blog.naver.com/907hz_/223488534078
 </p>
 <br><br>
