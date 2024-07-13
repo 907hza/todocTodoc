@@ -71,3 +71,22 @@
 또한, JWT 를 처음 적용해보면서 어느 곳에 저장하는 것이 가장 좋은 것인지 판단하는 것도 어려웠지만, XSS 공격, CSRF 공격을 방지하기 위해서는 HTTPS 에서 Secure Cookie 와 HTTP Only 쿠키를 사용해서 자바스크립트 기반의 공격을 방어하는 것이 가장 좋을 것이라고 판단이 되어서 accessToken 은 쿠키에, refreshToken 은 회원 DB 에 저장하게 되었습니다. accessToken 의 유효시간을 정해두고 해당 시간이 끝나면 refreshToken 을 통해 로그인 기간을 연장하는 js 를 만들었지만, 구현되지 않아 아쉬웠습니다. 동작 방식에 대해서 더 자세히 공부할 필요성을 느꼈습니다.<br>
 제가 어려움을 가장 크게 느꼈던 부분은, 소셜로그인을 구현할 때입니다. 인터넷에 예로 JPA 밖에 나와있지 않아서 해당 JPA 부분을 공부하면서 해야했기에 좀 더 어려움을 느꼈었습니다.<br> 모든 부분에서 어려움이 있었고 아쉬움이 없다면 거짓말이겠지만, 처음 시도해본 타임리프와 spring boot 를 더 공부해볼 수 있어서 좋았고, 많이 얻어갔다고 생각이 들었습니다.
 </p>
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+<br><br>
+<h3>(8) 참고했던 링크</h3>
+(1) jwt 구현<br>
+https://why-dev.tistory.com/365<br>
+https://m.blog.naver.com/qjawnswkd/222304836903<br>
+https://github1s.com/idsiemu/spring-boot/blob/master/src/main/java/com/hunter/city/security/JwtAuthorizationFilter.java<br>
+https://taesan94.tistory.com/290<br><br>
+
+(2) 소셜로그인 구현<br>
+https://ksh-coding.tistory.com/66#1.%20DefalutOAuth2User%EB%A5%BC%20%EC%83%81%EC%86%8D%ED%95%9C%20User%20%ED%81%B4%EB%9E%98%EC%8A%A4%20-%20CustomOAuth2User-1<br>
+https://github1s.com/sh111-coder/oauth2WithJwtLogin/blob/main/src/main/java/login/oauthtest4/global/oauth2/userinfo/NaverOAuth2UserInfo.java
+<br><br>
+(3) 소셜로그인 api<br>
+https://developers.naver.com/apps/#/myapps/NUo9moYA0WeT6_Hl1efX/config<br>
+https://console.cloud.google.com/apis/credentials?project=concise-ivy-419914&pli=1<br>
+https://developers.kakao.com/console/app/1061030/config/platform
