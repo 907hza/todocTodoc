@@ -77,10 +77,10 @@
 <br>
 <h3>(8) 참고했던 링크</h3>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. jwt 구현<br>
-https://why-dev.tistory.com/365<br>
-https://m.blog.naver.com/qjawnswkd/222304836903<br>
-https://github1s.com/idsiemu/spring-boot/blob/master/src/main/java/com/hunter/city/security/JwtAuthorizationFilter.java<br>
-https://taesan94.tistory.com/290<br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;https://why-dev.tistory.com/365<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;https://m.blog.naver.com/qjawnswkd/222304836903<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;https://github1s.com/idsiemu/spring-boot/blob/master/src/main/java/com/hunter/city/security/JwtAuthorizationFilter.java<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;https://taesan94.tistory.com/290<br><br>
 
 2. 소셜로그인 구현<br>
 https://ksh-coding.tistory.com/66#1.%20DefalutOAuth2User%EB%A5%BC%20%EC%83%81%EC%86%8D%ED%95%9C%20User%20%ED%81%B4%EB%9E%98%EC%8A%A4%20-%20CustomOAuth2User-1<br>
